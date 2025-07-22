@@ -52,12 +52,16 @@
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "autoprefixer": "^10.4.21",
     "chai": "^5.2.1",
+    "concurrently": "^9.2.0",
     "eslint": "^9.31.0",
     "jsdoc": "^4.0.4",
     "mocha": "^11.7.1",
     "nodemon": "^3.1.10",
     "nyc": "^17.1.0",
-    "prettier": "^3.6.2"
+    "postcss": "^8.5.6",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^4.1.11"
   }
 }

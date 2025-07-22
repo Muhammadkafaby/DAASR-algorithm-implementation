@@ -40,3 +40,16 @@
 {"level":"info","message":"Traffic statistics reset","timestamp":"2025-07-22T22:00:36.619Z"}
 {"level":"info","message":"Traffic monitoring started","timestamp":"2025-07-22T22:04:23.043Z"}
 {"level":"info","message":"Traffic monitoring started","timestamp":"2025-07-22T22:07:59.949Z"}
+{"level":"info","message":"Traffic monitoring started","timestamp":"2025-07-22T22:09:23.103Z"}
+{"level":"info","message":"Traffic monitoring started","timestamp":"2025-07-22T22:20:35.978Z"}
+{"level":"info","message":"Traffic monitoring started","timestamp":"2025-07-22T22:22:19.617Z"}
+{"level":"info","message":"Traffic monitoring started","timestamp":"2025-07-22T22:24:02.162Z"}
+{"level":"info","message":"Traffic monitoring started","timestamp":"2025-07-22T22:24:59.842Z"}
+{"level":"info","message":"Traffic monitoring started","timestamp":"2025-07-22T22:26:33.528Z"}
+{"level":"info","message":"Traffic monitoring started","timestamp":"2025-07-22T22:27:49.187Z"}
+{"level":"info","message":"Traffic monitoring started","timestamp":"2025-07-22T22:31:45.226Z"}
+{"level":"info","message":"Traffic monitoring started","timestamp":"2025-07-22T22:34:52.853Z"}
+{"level":"info","message":"Traffic monitoring started","timestamp":"2025-07-22T22:36:19.730Z"}
+{"level":"info","message":"Traffic monitoring started","timestamp":"2025-07-22T22:37:43.914Z"}
+{"level":"info","message":"Traffic statistics","methodDistribution":{"GET":30},"stats":{"averageResponseTime":1,"errorRate":0,"lastUpdated":1753224163924,"peakRequestsPerSecond":0,"peakResponseTime":3,"requestsPerMinute":4,"requestsPerSecond":0,"totalErrors":2,"totalRequests":30},"timestamp":"2025-07-22T22:42:43.925Z","topEndpoints":[["/api/stats",11],["/api/blocklist",11],["/",2],["/.well-known/appspecific/com.chrome.devtools.json",2],["/styles.css",2]],"topIPs":[["::1",30]]}
+{"level":"info","message":"Traffic monitoring started","timestamp":"2025-07-22T22:46:10.595Z"}
