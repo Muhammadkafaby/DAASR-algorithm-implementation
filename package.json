@@ -1,0 +1,62 @@
+{
+  "name": "daasr-enterprise-middleware",
+  "version": "1.0.0",
+  "description": "Dynamic Adaptive Algorithm for Scalable Rate-limiting - Enterprise middleware solution",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "mocha tests/**/*.test.js --timeout 10000",
+    "test:watch": "mocha tests/**/*.test.js --watch --timeout 10000",
+    "test:coverage": "nyc mocha tests/**/*.test.js --timeout 10000",
+    "lint": "eslint src/**/*.js tests/**/*.js",
+    "lint:fix": "eslint src/**/*.js tests/**/*.js --fix",
+    "format": "prettier --write src/**/*.js tests/**/*.js",
+    "docs": "jsdoc -c jsdoc.json",
+    "build": "echo 'No build step required for Node.js application'",
+    "docker:build": "docker build -t daasr-middleware .",
+    "docker:run": "docker run -p 3000:3000 daasr-middleware",
+    "docker:compose": "docker-compose up -d"
+  },
+  "keywords": [
+    "rate-limiting",
+    "middleware",
+    "express",
+    "enterprise",
+    "adaptive",
+    "scalable",
+    "daasr"
+  ],
+  "author": "DAASR Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/daasr-team/daasr-enterprise-middleware"
+  },
+  "bugs": {
+    "url": "https://github.com/daasr-team/daasr-enterprise-middleware/issues"
+  },
+  "homepage": "https://github.com/daasr-team/daasr-enterprise-middleware#readme",
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.0.1",
+    "helmet": "^8.1.0",
+    "joi": "^17.13.3",
+    "morgan": "^1.10.1",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "chai": "^5.2.1",
+    "eslint": "^9.31.0",
+    "jsdoc": "^4.0.4",
+    "mocha": "^11.7.1",
+    "nodemon": "^3.1.10",
+    "prettier": "^3.6.2",
+    "nyc": "^17.1.0"
+  }
+}

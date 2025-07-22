@@ -1,0 +1,4 @@
+{"burstFactor":1,"dynamicLimit":120,"identifier":"::1","level":"info","message":"DAASR adjustment","reputationFactor":1.2,"resourceFactor":1,"timestamp":"2025-07-22T15:10:02.319Z","trafficMultiplier":1,"windowSize":900000}
+{"burstFactor":1,"dynamicLimit":120,"identifier":"::1","level":"info","message":"DAASR adjustment","reputationFactor":1.2,"resourceFactor":1,"timestamp":"2025-07-22T15:29:36.259Z","trafficMultiplier":1,"windowSize":900000}
+{"burstFactor":0.98,"dynamicLimit":118,"identifier":"::1","level":"info","message":"DAASR adjustment","reputationFactor":1.2,"resourceFactor":1,"timestamp":"2025-07-22T15:32:03.044Z","trafficMultiplier":1,"windowSize":900000}
+{"burstFactor":1,"dynamicLimit":120,"identifier":"::1","level":"info","message":"DAASR adjustment","reputationFactor":1.2,"resourceFactor":1,"timestamp":"2025-07-22T15:34:53.527Z","trafficMultiplier":1,"windowSize":900000}
