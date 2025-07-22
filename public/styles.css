@@ -1,88 +1,99 @@
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #f4f7f9;
-    color: #333;
-    margin: 0;
-    padding: 20px;
+/* Custom styles to complement Tailwind CSS */
+
+/* Styling for Chart.js tooltips */
+.chartjs-tooltip {
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 5px;
+    color: white;
+    padding: 10px;
+    font-family: sans-serif;
+    font-size: 12px;
 }
 
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
+/* Custom scrollbar for dark mode */
+::-webkit-scrollbar {
+    width: 8px;
 }
 
-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
+::-webkit-scrollbar-track {
+    background: #1a202c; /* bg-gray-800 */
 }
 
-h1 {
-    font-size: 2em;
-    color: #2c3e50;
+::-webkit-scrollbar-thumb {
+    background: #4a5568; /* bg-gray-600 */
+    border-radius: 4px;
 }
 
-.status-indicator {
-    display: flex;
-    align-items: center;
-    font-size: 0.9em;
+::-webkit-scrollbar-thumb:hover {
+    background: #718096; /* bg-gray-500 */
 }
 
-.status-light {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    margin-right: 8px;
-    background-color: #e74c3c; /* Default to red */
-    transition: background-color 0.3s;
-}
-
+/* Status light animations */
 .status-light.healthy {
-    background-color: #2ecc71; /* Green */
+    background-color: #48bb78; /* green-500 */
+    animation: none;
 }
 
 .status-light.warning {
-    background-color: #f1c40f; /* Yellow */
+    background-color: #f56565; /* red-500 */
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-.grid-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
 }
 
-.card {
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    padding: 20px;
+/* Blocklist item styling */
+#blocklist li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid #2d3748; /* border-gray-700 */
 }
 
-.card h2 {
-    margin-top: 0;
-    font-size: 1.2em;
-    color: #34495e;
+#blocklist li:last-child {
+    border-bottom: none;
 }
 
-#health-metrics {
-    font-size: 1.1em;
+#blocklist button {
+    background-color: #e53e3e; /* red-600 */
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background-color 0.2s;
 }
 
-#health-metrics p {
-    margin: 10px 0;
+#blocklist button:hover {
+    background-color: #c53030; /* red-700 */
 }
 
-ul {
-    list-style-type: none;
-    padding: 0;
+/* Chart interval selector styles */
+.interval-btn {
+    padding: 6px 12px;
+    border: none;
+    background-color: transparent;
+    color: #a0aec0; /* text-gray-400 */
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.2s, color 0.2s;
 }
 
-ul li {
-    padding: 8px 0;
-    border-bottom: 1px solid #ecf0f1;
+.interval-btn:hover {
+    background-color: #4a5568; /* bg-gray-600 */
+    color: #e2e8f0; /* text-gray-200 */
 }
 
-.full-width {
-    grid-column: 1 / -1;
+.interval-btn.active-interval {
+    background-color: #4299e1; /* bg-blue-500 */
+    color: white;
+    font-weight: bold;
 }

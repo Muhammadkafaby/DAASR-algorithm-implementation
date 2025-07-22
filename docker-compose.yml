@@ -1,4 +1,4 @@
-version: '3.8'
+# Removed obsolete version attribute
 
 services:
   daasr-middleware:
@@ -15,7 +15,13 @@ services:
       - ./logs:/app/logs
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -44,5 +50,10 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     restart: unless-stopped
 
+# Keep volumes section but add enterprise-ready configurations
 volumes:
   redis_data:
+    driver_opts:
+      type: local
+      o: bind
+      device: "/mnt/c/Users/muham/OneDrive/Desktop/Projekan Betul/website-enterprise/redis-data"

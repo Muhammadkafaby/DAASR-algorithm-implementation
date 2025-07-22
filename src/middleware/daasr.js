@@ -204,7 +204,7 @@ class DAASRAlgorithm {
    */
   calculateUserReputation(identifier) {
     const userHistory = this.userPatterns.get(identifier);
-    if (!userHistory) return 1.0;
+    if (!userHistory) return 1.2; // New users get a bonus
 
     // Calculate reputation based on historical behavior
     const totalRequests = userHistory.requests.length;

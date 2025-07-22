@@ -8,11 +8,16 @@
  * @version 1.0.0
  */
 
-const { expect } = require("chai");
 const { DAASRAlgorithm } = require("../src/middleware/daasr");
 const config = require("../src/config/default");
 
 describe("DAASR Algorithm Tests", () => {
+  let expect;
+
+  before(async () => {
+    const chai = await import("chai");
+    expect = chai.expect;
+  });
   let daasr;
 
   beforeEach(() => {
@@ -200,7 +205,13 @@ describe("DAASR Algorithm Tests", () => {
 });
 
 describe("Utility Functions Tests", () => {
+  let expect;
   const helpers = require("../src/utils/helpers");
+
+  before(async () => {
+    const chai = await import("chai");
+    expect = chai.expect;
+  });
 
   describe("IP Validation", () => {
     it("should validate IPv4 addresses", () => {
@@ -254,7 +265,13 @@ describe("Utility Functions Tests", () => {
 });
 
 describe("Traffic Monitor Tests", () => {
+  let expect;
   const trafficMonitor = require("../src/services/trafficMonitor");
+
+  before(async () => {
+    const chai = await import("chai");
+    expect = chai.expect;
+  });
 
   describe("Statistics Calculation", () => {
     it("should calculate request rate", () => {
