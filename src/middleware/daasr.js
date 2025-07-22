@@ -72,6 +72,9 @@ class DAASRAlgorithm {
     // Calculate user reputation factor
     const reputationFactor = this.calculateUserReputation(identifier);
 
+    // Calculate penalty factor
+    const penaltyFactor = this.calculatePenaltyFactor(identifier);
+
     // Calculate final rate limit
     const baseLimit = baseConfig.baseRateLimit;
     const dynamicLimit = Math.max(
@@ -83,7 +86,8 @@ class DAASRAlgorithm {
             trafficMultiplier *
             burstFactor *
             resourceFactor *
-            reputationFactor
+            reputationFactor *
+            penaltyFactor
         )
       )
     );
@@ -216,6 +220,29 @@ class DAASRAlgorithm {
   }
 
   /**
+   * Calculate penalty factor for repeat offenders
+   * @param {string} identifier - User identifier
+   * @returns {number} Penalty factor
+   */
+  calculatePenaltyFactor(identifier) {
+    const userHistory = this.userPatterns.get(identifier);
+    if (!userHistory || !userHistory.offenses) {
+      return 1.0;
+    }
+
+    // Reduce penalty over time (e.g., one offense "forgiven" every 15 minutes)
+    const now = Date.now();
+    const fifteenMinutes = 15 * 60 * 1000;
+    userHistory.offenses = userHistory.offenses.filter(
+      (offenseTime) => now - offenseTime < fifteenMinutes
+    );
+
+    // Apply penalty: 10% reduction for each recent offense, up to a max of 50%
+    const penalty = Math.max(0.5, 1.0 - userHistory.offenses.length * 0.1);
+    return penalty;
+  }
+
+  /**
    * Calculate optimal window size based on traffic pattern
    * @param {Object} trafficStats - Current traffic statistics
    * @returns {number} Window size in milliseconds
@@ -239,12 +266,22 @@ class DAASRAlgorithm {
   handleRateLimit(req, res, limit, windowSize) {
     const identifier = req.ip || req.connection.remoteAddress;
 
+    // Record the offense
+    const userHistory = this.userPatterns.get(identifier) || {
+      requests: [],
+      offenses: [],
+    };
+    userHistory.offenses = userHistory.offenses || [];
+    userHistory.offenses.push(Date.now());
+    this.userPatterns.set(identifier, userHistory);
+
     logger.warn("Rate limit exceeded", {
       identifier,
       limit,
       windowSize,
       userAgent: req.get("User-Agent"),
       url: req.url,
+      offenseCount: userHistory.offenses.length,
     });
 
     res.status(429).json({

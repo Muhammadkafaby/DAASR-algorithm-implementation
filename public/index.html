@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAASR Monitoring Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DAASR Monitoring Dashboard</h1>
+            <div class="status-indicator" id="status-indicator">
+                <span class="status-light" id="status-light"></span>
+                <span id="status-text">Connecting...</span>
+            </div>
+        </header>
+        <main>
+            <div class="grid-container">
+                <div class="card">
+                    <h2>Real-time Traffic</h2>
+                    <canvas id="traffic-chart"></canvas>
+                </div>
+                <div class="card">
+                    <h2>System Health</h2>
+                    <div id="health-metrics"></div>
+                </div>
+                <div class="card">
+                    <h2>Top Endpoints</h2>
+                    <ul id="top-endpoints"></ul>
+                </div>
+                <div class="card">
+                    <h2>Top IPs</h2>
+                    <ul id="top-ips"></ul>
+                </div>
+                <div class="card">
+                    <h2>Blocklist Management</h2>
+                    <form id="blocklist-form">
+                        <input type="text" id="ip-input" placeholder="Enter IP address" required>
+                        <button type="submit">Block IP</button>
+                    </form>
+                    <ul id="blocklist"></ul>
+                </div>
+                <div class="card full-width">
+                    <h2>Historical Traffic (Last 60 Minutes)</h2>
+                    <canvas id="historical-traffic-chart"></canvas>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="dashboard.js"></script>
+</body>
+</html>

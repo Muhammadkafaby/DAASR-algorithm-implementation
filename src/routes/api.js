@@ -13,6 +13,7 @@ const router = express.Router();
 const trafficMonitor = require("../services/trafficMonitor");
 const config = require("../config/default");
 const { getMemoryUsage } = require("../utils/helpers");
+const blocklistManager = require("../services/blocklistManager");
 
 /**
  * GET /api/stats
@@ -236,6 +237,73 @@ router.get("/status", (req, res) => {
       error: "Failed to retrieve status",
       message: error.message,
     });
+  }
+});
+
+/**
+ * GET /api/blocklist
+ * Get the list of blocked IPs
+ */
+router.get("/blocklist", (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      blocklist: blocklistManager.getBlocklist(),
+      timestamp: new Date().toISOString(),
+    },
+  });
+});
+
+/**
+ * POST /api/blocklist/add
+ * Add an IP to the blocklist
+ */
+router.post("/blocklist/add", (req, res) => {
+  const { ip } = req.body;
+  if (!ip) {
+    return res
+      .status(400)
+      .json({ success: false, error: "IP address is required" });
+  }
+
+  const added = blocklistManager.add(ip);
+  if (added) {
+    res.json({
+      success: true,
+      message: `IP ${ip} has been added to the blocklist.`,
+    });
+  } else {
+    res
+      .status(409)
+      .json({ success: false, error: `IP ${ip} is already in the blocklist.` });
+  }
+});
+
+/**
+ * POST /api/blocklist/remove
+ * Remove an IP from the blocklist
+ */
+router.post("/blocklist/remove", (req, res) => {
+  const { ip } = req.body;
+  if (!ip) {
+    return res
+      .status(400)
+      .json({ success: false, error: "IP address is required" });
+  }
+
+  const removed = blocklistManager.remove(ip);
+  if (removed) {
+    res.json({
+      success: true,
+      message: `IP ${ip} has been removed from the blocklist.`,
+    });
+  } else {
+    res
+      .status(404)
+      .json({
+        success: false,
+        error: `IP ${ip} was not found in the blocklist.`,
+      });
   }
 });
 

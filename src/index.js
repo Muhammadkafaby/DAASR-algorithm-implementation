@@ -7,6 +7,7 @@
  */
 
 const express = require("express");
+const path = require("path");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
@@ -14,33 +15,57 @@ const winston = require("winston");
 require("dotenv").config();
 
 const daasrMiddleware = require("./middleware/daasr");
+const blocklistMiddleware = require("./middleware/blocklist");
 const trafficMonitor = require("./services/trafficMonitor");
 const config = require("./config/default");
 
 // Configure Winston logger
 const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || "info",
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.json()
-  ),
+  level: config.get("logLevel"),
+  format: config.get("productionLogging")
+    ? winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.errors({ stack: true }),
+        winston.format.json()
+      )
+    : winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      ),
   defaultMeta: { service: "daasr-middleware" },
   transports: [
     new winston.transports.File({ filename: "logs/error.log", level: "error" }),
     new winston.transports.File({ filename: "logs/app.log" }),
-    new winston.transports.Console({
-      format: winston.format.simple(),
-    }),
   ],
 });
+
+// If not in production, add a console transport
+if (!config.get("productionLogging")) {
+  logger.add(
+    new winston.transports.Console({
+      format: winston.format.simple(),
+    })
+  );
+}
 
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Blocklist middleware
+app.use(blocklistMiddleware);
+
 // Security middleware
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "script-src": ["'self'", "https://cdn.jsdelivr.net"],
+      },
+    },
+  })
+);
 
 // Logging middleware
 app.use(
@@ -65,6 +90,14 @@ app.use(daasrMiddleware);
 
 // Apply basic rate limiting as fallback
 app.use(basicLimiter);
+
+// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, "..", "public")));
+
+// Root route to serve the dashboard
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "..", "public", "index.html"));
+});
 
 // Health check endpoint
 app.get("/health", (req, res) => {

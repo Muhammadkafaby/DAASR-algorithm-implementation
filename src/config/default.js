@@ -49,6 +49,7 @@ const configSchema = Joi.object({
   logLevel: Joi.string()
     .valid("error", "warn", "info", "debug")
     .default("info"),
+  productionLogging: Joi.boolean().default(false),
 
   // Feature flags
   enableAdaptiveLimits: Joi.boolean().default(true),
@@ -120,6 +121,7 @@ class ConfigManager {
 
       // Logging settings
       logLevel: process.env.DAASR_LOG_LEVEL || "info",
+      productionLogging: process.env.NODE_ENV === "production",
 
       // Feature flags
       enableAdaptiveLimits:
