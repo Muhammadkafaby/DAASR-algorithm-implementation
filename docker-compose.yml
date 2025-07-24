@@ -1,59 +1,271 @@
-# Removed obsolete version attribute
+# Enterprise Docker Compose Configuration
+# Includes monitoring stack, alerting, and production-ready services
+
+version: '3.8'
 
 services:
-  daasr-middleware:
-    build: .
+  # Main DAASR Enterprise Application
+  daasr-enterprise:
+    build: 
+      context: .
+      target: production
+    container_name: daasr-enterprise
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - LOG_LEVEL=info
       - DAASR_BASE_RATE_LIMIT=100
       - DAASR_MIN_RATE_LIMIT=10
       - DAASR_MAX_RATE_LIMIT=1000
+      - DAASR_ADJUSTMENT_INTERVAL=30000
+      - METRICS_RETENTION_HOURS=24
+      - ALERT_CHECK_INTERVAL=30000
+      # Redis connection for distributed rate limiting
+      - REDIS_URL=redis://redis:6379
+      # Email alerts configuration
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - ALERT_FROM_EMAIL=${ALERT_FROM_EMAIL:-}
+      - ALERT_TO_EMAIL=${ALERT_TO_EMAIL:-}
+      # Webhook configuration
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+      # API Keys for enterprise features
+      - ENTERPRISE_API_KEY=${ENTERPRISE_API_KEY:-enterprise-key-2024}
+      - PREMIUM_API_KEY=${PREMIUM_API_KEY:-premium-key-2024}
     volumes:
       - ./logs:/app/logs
+      - ./data:/app/data
+      - daasr_data:/app/persistent
     restart: unless-stopped
+    depends_on:
+      - redis
+      - prometheus
+    networks:
+      - daasr-network
     healthcheck:
-      test:
-        [
-          "CMD",
-          "node",
-          "-e",
-          "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })",
-        ]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.daasr.rule=Host(`daasr.local`)"
+      - "traefik.http.services.daasr.loadbalancer.server.port=3000"
 
-  # Optional: Add Redis for distributed rate limiting
+  # Redis for distributed rate limiting and caching
   redis:
     image: redis:7-alpine
+    container_name: daasr-redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    command: redis-server --save 60 1 --maxmemory 256mb --maxmemory-policy allkeys-lru --loglevel notice
     restart: unless-stopped
+    networks:
+      - daasr-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
-
-  # Optional: Add monitoring with Prometheus
+    sysctls:
+      - net.core.somaxconn=65535
+    mem_limit: 512m
+    
+  # Prometheus for metrics collection and monitoring
   prometheus:
     image: prom/prometheus:latest
+    container_name: daasr-prometheus
     ports:
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/rules:/etc/prometheus/rules
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
     restart: unless-stopped
+    networks:
+      - daasr-network
+    depends_on:
+      - node-exporter
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.local`)"
 
-# Keep volumes section but add enterprise-ready configurations
+  # Node Exporter for system metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: daasr-node-exporter
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
+    networks:
+      - daasr-network
+
+  # Grafana for advanced visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: daasr-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_FEATURE_TOGGLES_ENABLE=ngalert
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    restart: unless-stopped
+    networks:
+      - daasr-network
+    depends_on:
+      - prometheus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.local`)"
+
+  # AlertManager for advanced alerting
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: daasr-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    restart: unless-stopped
+    networks:
+      - daasr-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.alertmanager.rule=Host(`alerts.local`)"
+
+  # Nginx for load balancing and SSL termination
+  nginx:
+    image: nginx:alpine
+    container_name: daasr-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx/logs:/var/log/nginx
+    restart: unless-stopped
+    networks:
+      - daasr-network
+    depends_on:
+      - daasr-enterprise
+
+  # Optional: ELK Stack for log management
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+    container_name: daasr-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    restart: unless-stopped
+    networks:
+      - daasr-network
+    profiles:
+      - elk
+    mem_limit: 1g
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.10.0
+    container_name: daasr-logstash
+    volumes:
+      - ./logstash/config:/usr/share/logstash/config
+      - ./logs:/usr/share/logstash/logs
+    environment:
+      - "LS_JAVA_OPTS=-Xms256m -Xmx256m"
+    networks:
+      - daasr-network
+    depends_on:
+      - elasticsearch
+    profiles:
+      - elk
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.10.0
+    container_name: daasr-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      - daasr-network
+    depends_on:
+      - elasticsearch
+    profiles:
+      - elk
+
+# Named volumes for data persistence
 volumes:
+  daasr_data:
+    driver: local
   redis_data:
-    driver_opts:
-      type: local
-      o: bind
-      device: "/mnt/c/Users/muham/OneDrive/Desktop/Projekan Betul/website-enterprise/redis-data"
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  alertmanager_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+
+# Custom network for service communication
+networks:
+  daasr-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Health check configurations
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 30s
+
+# Logging configuration
+x-logging-defaults: &logging-defaults
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"

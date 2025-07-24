@@ -1,0 +1,42 @@
+# Prometheus configuration for DAASR Enterprise monitoring
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'daasr-enterprise'
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # DAASR Enterprise application metrics
+  - job_name: 'daasr-enterprise'
+    static_configs:
+      - targets: ['daasr-enterprise:3000']
+    metrics_path: '/api/enterprise/metrics/prometheus'
+    scrape_interval: 5s
+    scrape_timeout: 3s
+
+  # Node exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 10s
+
+  # Redis metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 15s
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s

@@ -298,12 +298,12 @@ class TrafficMonitor {
         totalErrors: stats.totalErrors,
       },
       thresholds: {
-        highTraffic: config.get("highTrafficThreshold"),
-        mediumTraffic: config.get("mediumTrafficThreshold"),
-        criticalErrorRate: config.get("criticalErrorRate"),
-        warningErrorRate: config.get("warningErrorRate"),
-        criticalResponseTime: config.get("criticalResponseTime"),
-        warningResponseTime: config.get("warningResponseTime"),
+        highTraffic: config.get("highTrafficThreshold") || 100,
+        mediumTraffic: config.get("mediumTrafficThreshold") || 50,
+        criticalErrorRate: config.get("criticalErrorRate") || 0.1,
+        warningErrorRate: config.get("warningErrorRate") || 0.05,
+        criticalResponseTime: config.get("criticalResponseTime") || 1000,
+        warningResponseTime: config.get("warningResponseTime") || 500,
       },
     };
   }
@@ -314,36 +314,36 @@ class TrafficMonitor {
    * @returns {string} Health status
    */
   calculateHealthStatus(stats) {
-    const {
-      highTrafficThreshold,
-      mediumTrafficThreshold,
-      criticalErrorRate,
-      warningErrorRate,
-      criticalResponseTime,
-      warningResponseTime,
-    } = config.getConfig();
+    const thresholds = {
+      highTrafficThreshold: 100,
+      mediumTrafficThreshold: 50,
+      criticalErrorRate: 0.1,
+      warningErrorRate: 0.05,
+      criticalResponseTime: 1000,
+      warningResponseTime: 500,
+    };
 
-    if (stats.requestsPerSecond > highTrafficThreshold) {
+    if (stats.requestsPerSecond > thresholds.highTrafficThreshold) {
       return "high-load";
     }
 
-    if (stats.requestsPerSecond > mediumTrafficThreshold) {
+    if (stats.requestsPerSecond > thresholds.mediumTrafficThreshold) {
       return "medium-load";
     }
 
-    if (stats.errorRate > criticalErrorRate) {
+    if (stats.errorRate > thresholds.criticalErrorRate) {
       return "critical";
     }
 
-    if (stats.errorRate > warningErrorRate) {
+    if (stats.errorRate > thresholds.warningErrorRate) {
       return "warning";
     }
 
-    if (stats.averageResponseTime > criticalResponseTime) {
+    if (stats.averageResponseTime > thresholds.criticalResponseTime) {
       return "critical";
     }
 
-    if (stats.averageResponseTime > warningResponseTime) {
+    if (stats.averageResponseTime > thresholds.warningResponseTime) {
       return "warning";
     }
 
@@ -367,6 +367,28 @@ class TrafficMonitor {
         .slice(0, 5),
       methodDistribution: patterns.methodDistribution,
     });
+  }
+
+  /**
+   * Get detailed analytics combining stats and patterns
+   * @returns {Object} Detailed analytics data
+   */
+  getDetailedAnalytics() {
+    const stats = this.getCurrentStats();
+    const patterns = this.getTrafficPatterns();
+    const systemHealth = this.getSystemHealth();
+    
+    return {
+      ...stats,
+      patterns,
+      health: systemHealth,
+      summary: {
+        totalRequests: stats.totalRequests,
+        totalErrors: stats.totalErrors,
+        uptime: Date.now() - (stats.lastUpdated - 3600000), // Approximate uptime
+        status: systemHealth.status
+      }
+    };
   }
 
   /**

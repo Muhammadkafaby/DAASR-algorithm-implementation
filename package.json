@@ -1,7 +1,7 @@
 {
   "name": "daasr-enterprise-middleware",
-  "version": "1.0.0",
-  "description": "Dynamic Adaptive Algorithm for Scalable Rate-limiting - Enterprise middleware solution",
+  "version": "2.0.0",
+  "description": "Dynamic Adaptive Algorithm for Scalable Rate-limiting - Enterprise monitoring solution with Netdata-like capabilities",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
@@ -14,9 +14,13 @@
     "format": "prettier --write src/**/*.js tests/**/*.js",
     "docs": "jsdoc -c jsdoc.json",
     "build": "echo 'No build step required for Node.js application'",
-    "docker:build": "docker build -t daasr-middleware .",
-    "docker:run": "docker run -p 3000:3000 daasr-middleware",
-    "docker:compose": "docker-compose up -d"
+    "docker:build": "docker build -t daasr-enterprise .",
+    "docker:run": "docker run -p 3000:3000 daasr-enterprise",
+    "docker:compose": "docker-compose up -d",
+    "health:check": "curl -f http://localhost:3000/health || exit 1",
+    "monitoring:start": "npm start",
+    "alerts:test": "node scripts/test-alerts.js",
+    "metrics:export": "curl http://localhost:3000/api/enterprise/metrics/prometheus > metrics.txt"
   },
   "keywords": [
     "rate-limiting",
@@ -25,9 +29,18 @@
     "enterprise",
     "adaptive",
     "scalable",
-    "daasr"
+    "daasr",
+    "monitoring",
+    "netdata",
+    "metrics",
+    "alerting",
+    "real-time",
+    "dashboard",
+    "system-monitoring",
+    "performance",
+    "observability"
   ],
-  "author": "DAASR Team",
+  "author": "DAASR Enterprise Team",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -38,8 +51,8 @@
   },
   "homepage": "https://github.com/daasr-team/daasr-enterprise-middleware#readme",
   "engines": {
-    "node": ">=14.0.0",
-    "npm": ">=6.0.0"
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
   },
   "dependencies": {
     "dotenv": "^17.2.0",
@@ -62,6 +75,63 @@
     "nyc": "^17.1.0",
     "postcss": "^8.5.6",
     "prettier": "^3.6.2",
-    "tailwindcss": "^4.1.11"
+    "tailwindcss": "^4.1.11",
+    "supertest": "^7.0.0"
+  },
+  "nyc": {
+    "exclude": [
+      "tests/**",
+      "node_modules/**",
+      "logs/**"
+    ],
+    "reporter": [
+      "text",
+      "html",
+      "lcov"
+    ],
+    "check-coverage": true,
+    "lines": 80,
+    "statements": 80,
+    "functions": 80,
+    "branches": 80
+  },
+  "eslintConfig": {
+    "env": {
+      "node": true,
+      "es2021": true,
+      "mocha": true
+    },
+    "extends": "eslint:recommended",
+    "parserOptions": {
+      "ecmaVersion": 12,
+      "sourceType": "module"
+    },
+    "rules": {
+      "no-console": "warn",
+      "no-unused-vars": "error",
+      "prefer-const": "error"
+    }
+  },
+  "prettier": {
+    "semi": true,
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 80,
+    "tabWidth": 2
+  },
+  "nodemonConfig": {
+    "watch": [
+      "src/**/*"
+    ],
+    "ext": "js,json",
+    "ignore": [
+      "logs/**/*",
+      "node_modules/**/*",
+      "tests/**/*"
+    ],
+    "exec": "node src/index.js",
+    "env": {
+      "NODE_ENV": "development"
+    }
   }
 }

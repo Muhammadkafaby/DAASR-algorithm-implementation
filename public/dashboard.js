@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ipInput: document.getElementById("ip-input"),
     },
     charts: {
-      traffic: document.getElementById("traffic-chart").getContext("2d"),
+      traffic: document.getElementById("traffic-chart")?.getContext("2d"),
       intervalSelector: document.getElementById("chart-interval-selector"),
     },
   };
@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- State ---
   let trafficChart;
   let chartIntervalSeconds = 60; // Default to 1 minute
+  let websocket;
 
   // --- Chart Configuration ---
   const chartConfig = {
@@ -43,7 +44,28 @@ document.addEventListener("DOMContentLoaded", () => {
           backgroundColor: "rgba(56, 189, 248, 0.2)",
           fill: true,
           tension: 0.4,
-          pointRadius: 0,
+          pointRadius: 2,
+          pointHoverRadius: 4,
+        },
+        {
+          label: "CPU Usage %",
+          data: [],
+          borderColor: "rgb(34, 197, 94)",
+          backgroundColor: "rgba(34, 197, 94, 0.2)",
+          fill: false,
+          tension: 0.4,
+          pointRadius: 2,
+          pointHoverRadius: 4,
+        },
+        {
+          label: "Memory Usage %",
+          data: [],
+          borderColor: "rgb(249, 115, 22)",
+          backgroundColor: "rgba(249, 115, 22, 0.2)",
+          fill: false,
+          tension: 0.4,
+          pointRadius: 2,
+          pointHoverRadius: 4,
         },
       ],
     },
@@ -81,67 +103,144 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- Functions ---
 
   function initializeChart() {
-    trafficChart = new Chart(elements.charts.traffic, chartConfig);
+    if (elements.charts.traffic) {
+      trafficChart = new Chart(elements.charts.traffic, chartConfig);
+    }
   }
 
   function updateStatus(isConnected, text) {
-    elements.status.text.textContent = text;
+    if (elements.status.text) {
+      elements.status.text.textContent = text;
+    }
     const light = elements.status.light;
-    light.className = "w-3 h-3 rounded-full"; // Reset
-    if (isConnected) {
-      light.classList.add("bg-green-500");
-    } else {
-      light.classList.add("bg-yellow-500", "animate-pulse");
+    if (light) {
+      light.className = "w-3 h-3 rounded-full"; // Reset
+      if (isConnected) {
+        light.classList.add("bg-green-500");
+      } else {
+        light.classList.add("bg-yellow-500", "animate-pulse");
+      }
     }
   }
 
-  function updateRealtimeData(status) {
-    if (!status || !status.system || !status.traffic) return;
-
-    const healthStatus = status.system.status;
-    const light = elements.status.light;
-    if (healthStatus === "healthy") {
-      light.className = "w-3 h-3 rounded-full bg-green-500";
-    } else if (healthStatus === "warning" || healthStatus === "critical") {
-      light.className = "w-3 h-3 rounded-full bg-red-500 animate-pulse";
-    }
-
-    elements.metrics.health.innerHTML = `
-        <p><strong>Status:</strong> <span class="font-bold ${healthStatus === "healthy" ? "text-green-400" : "text-red-400"}">${healthStatus}</span></p>
-        <p><strong>Uptime:</strong> ${Math.round(status.system.uptime)}s</p>
-        <p><strong>Memory:</strong> ${status.system.memory.heapUsed} MB / ${status.system.memory.heapTotal} MB</p>
-    `;
-
-    elements.metrics.rps.textContent = status.traffic.requestsPerSecond;
-    elements.metrics.avgResponse.textContent = `${status.traffic.averageResponseTime}ms`;
-    elements.metrics.errorRate.textContent = `${(status.traffic.errorRate * 100).toFixed(2)}%`;
-
-    const now = new Date();
-    const timeLabel = `${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
-
-    trafficChart.data.labels.push(timeLabel);
-    trafficChart.data.datasets[0].data.push(status.traffic.requestsPerSecond);
-
-    // Data is pushed every 2 seconds, so max data points = interval / 2
-    const maxDataPoints = chartIntervalSeconds / 2;
-    if (trafficChart.data.labels.length > maxDataPoints) {
-      trafficChart.data.labels.shift();
-      trafficChart.data.datasets[0].data.shift();
-    }
-    trafficChart.update();
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
-  function updateLists(stats, blocklist) {
-    if (stats && stats.patterns) {
-      updateTopList(elements.lists.topEndpoints, stats.patterns.topEndpoints);
-      updateTopList(elements.lists.topIps, stats.patterns.topIPs);
+  function updateRealtimeData(metricsData) {
+    if (!metricsData) return;
+
+    try {
+      // Update system health status
+      const healthStatus = metricsData.health?.status || 'unknown';
+      const light = elements.status.light;
+      if (light) {
+        if (healthStatus === "healthy") {
+          light.className = "w-3 h-3 rounded-full bg-green-500";
+        } else if (healthStatus === "warning" || healthStatus === "critical") {
+          light.className = "w-3 h-3 rounded-full bg-red-500 animate-pulse";
+        } else {
+          light.className = "w-3 h-3 rounded-full bg-yellow-500";
+        }
+      }
+
+      // Update health metrics
+      if (elements.metrics.health && metricsData.system) {
+        const system = metricsData.system;
+        const memory = system.memory?.system || system.memory;
+        const cpu = system.cpu || {};
+        
+        elements.metrics.health.innerHTML = `
+          <p><strong>Status:</strong> <span class="font-bold ${healthStatus === "healthy" ? "text-green-400" : "text-red-400"}">${healthStatus}</span></p>
+          <p><strong>CPU:</strong> ${cpu.overall ? cpu.overall.toFixed(1) : 'N/A'}%</p>
+          <p><strong>Memory:</strong> ${memory ? (memory.usagePercent ? memory.usagePercent.toFixed(1) : ((memory.used / memory.total) * 100).toFixed(1)) : 'N/A'}%</p>
+          <p><strong>Load:</strong> ${system.load?.load1 ? system.load.load1.toFixed(2) : 'N/A'}</p>
+        `;
+      }
+
+      // Get current traffic stats
+      fetchTrafficStats();
+
+      // Update chart with real-time data
+      if (trafficChart) {
+        const now = new Date();
+        const timeLabel = `${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
+
+        trafficChart.data.labels.push(timeLabel);
+        
+        // Add data points
+        const rps = getCurrentRPS();
+        const cpuUsage = metricsData.system?.cpu?.overall || 0;
+        const memoryUsage = metricsData.system?.memory?.system?.usagePercent || 
+                          (metricsData.system?.memory?.system ? 
+                           (metricsData.system.memory.system.used / metricsData.system.memory.system.total) * 100 : 0);
+
+        trafficChart.data.datasets[0].data.push(rps);
+        trafficChart.data.datasets[1].data.push(cpuUsage);
+        trafficChart.data.datasets[2].data.push(memoryUsage);
+
+        // Keep only last 30 data points
+        const maxDataPoints = 30;
+        if (trafficChart.data.labels.length > maxDataPoints) {
+          trafficChart.data.labels.shift();
+          trafficChart.data.datasets.forEach(dataset => dataset.data.shift());
+        }
+        trafficChart.update('none');
+      }
+
+    } catch (error) {
+      console.error('Error updating realtime data:', error);
     }
-    if (blocklist) {
-      updateBlocklist(blocklist.blocklist);
+  }
+
+  let currentRPS = 0;
+  function getCurrentRPS() {
+    return currentRPS;
+  }
+
+  async function fetchTrafficStats() {
+    try {
+      const response = await fetch("/api/stats");
+      if (!response.ok) throw new Error("Failed to fetch traffic stats");
+      
+      const data = await response.json();
+      const stats = data.data?.stats || {};
+      
+      // Update metrics display
+      if (elements.metrics.rps) {
+        elements.metrics.rps.textContent = stats.requestsPerSecond || 0;
+        currentRPS = stats.requestsPerSecond || 0;
+      }
+      if (elements.metrics.avgResponse) {
+        elements.metrics.avgResponse.textContent = `${stats.averageResponseTime || 0}ms`;
+      }
+      if (elements.metrics.errorRate) {
+        const errorRate = ((stats.errorRate || 0) * 100).toFixed(2);
+        elements.metrics.errorRate.textContent = `${errorRate}%`;
+      }
+
+      // Update lists
+      updateLists(data.data);
+
+    } catch (error) {
+      console.error('Error fetching traffic stats:', error);
+    }
+  }
+
+  function updateLists(data) {
+    if (data && data.patterns) {
+      updateTopList(elements.lists.topEndpoints, data.patterns.topEndpoints);
+      updateTopList(elements.lists.topIps, data.patterns.topIPs);
     }
   }
 
   function updateTopList(element, data) {
+    if (!element) return;
+    
     element.innerHTML = "";
     if (!data || Object.keys(data).length === 0) {
       element.innerHTML = '<li class="text-gray-500">No data available.</li>';
@@ -158,135 +257,100 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function updateBlocklist(blockedIPs) {
-    elements.lists.blocklist.innerHTML = "";
-    if (!blockedIPs || blockedIPs.length === 0) {
-      elements.lists.blocklist.innerHTML =
-        '<li class="text-center text-gray-500">No IPs are currently blocked.</li>';
-      return;
-    }
-    blockedIPs.forEach((ip) => {
-      const li = document.createElement("li");
-      li.innerHTML = `
-          <span class="font-mono">${ip}</span>
-          <button data-ip="${ip}" class="unblock-btn bg-gray-600 hover:bg-gray-500 text-white text-xs font-bold py-1 px-2 rounded transition-colors">Unblock</button>
-      `;
-      elements.lists.blocklist.appendChild(li);
-    });
-  }
-
-  async function fetchStaticData() {
+  async function fetchMetrics() {
     try {
-      const [statsRes, blocklistRes] = await Promise.all([
-        fetch("/api/stats"),
-        fetch("/api/blocklist"),
-      ]);
-      if (!statsRes.ok || !blocklistRes.ok)
-        throw new Error("Failed to fetch static data");
-      const statsData = await statsRes.json();
-      const blocklistData = await blocklistRes.json();
-      updateLists(statsData.data, blocklistData.data);
+      const response = await fetch("/api/enterprise/metrics");
+      if (!response.ok) throw new Error("Failed to fetch metrics");
+      
+      const data = await response.json();
+      updateRealtimeData(data);
     } catch (error) {
-      console.error(error.message);
+      console.error('Error fetching metrics:', error);
+      updateStatus(false, "Connection Error");
     }
   }
 
-  async function blockIp(ip) {
+  // --- WebSocket Connection ---
+  function initializeWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}`;
+    
     try {
-      await fetch("/api/blocklist/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ip }),
-      });
-      fetchStaticData();
+      websocket = new WebSocket(wsUrl);
+      
+      websocket.onopen = () => {
+        console.log('WebSocket connected');
+        updateStatus(true, "Connected");
+      };
+      
+      websocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'metrics') {
+            updateRealtimeData(data.data);
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+      
+      websocket.onclose = () => {
+        console.log('WebSocket disconnected');
+        updateStatus(false, "Disconnected");
+        // Attempt to reconnect after 5 seconds
+        setTimeout(initializeWebSocket, 5000);
+      };
+      
+      websocket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        updateStatus(false, "Connection Error");
+      };
     } catch (error) {
-      console.error("Failed to block IP:", error);
+      console.error('Failed to initialize WebSocket:', error);
+      // Fallback to polling
+      startPolling();
     }
   }
 
-  async function unblockIp(ip) {
-    try {
-      await fetch("/api/blocklist/remove", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ip }),
-      });
-      fetchStaticData();
-    } catch (error) {
-      console.error("Failed to unblock IP:", error);
-    }
+  function startPolling() {
+    updateStatus(false, "Polling Mode");
+    
+    // Fetch initial data
+    fetchMetrics();
+    fetchTrafficStats();
+    
+    // Poll every 2 seconds
+    setInterval(() => {
+      fetchMetrics();
+      fetchTrafficStats();
+    }, 2000);
   }
 
   // --- Event Listeners ---
-  elements.forms.blocklist.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const ip = elements.forms.ipInput.value.trim();
-    if (ip) {
-      blockIp(ip);
-      elements.forms.ipInput.value = "";
-    }
-  });
-
-  elements.lists.blocklist.addEventListener("click", (e) => {
-    if (e.target.classList.contains("unblock-btn")) {
-      unblockIp(e.target.dataset.ip);
-    }
-  });
-
-  elements.charts.intervalSelector.addEventListener("click", (e) => {
-    if (e.target.classList.contains("interval-btn")) {
-      chartIntervalSeconds = parseInt(e.target.dataset.interval, 10);
-
-      // Update active button style
-      document
-        .querySelectorAll(".interval-btn")
-        .forEach((btn) => btn.classList.remove("active-interval"));
-      e.target.classList.add("active-interval");
-
-      // Clear chart data on interval change
-      trafficChart.data.labels = [];
-      trafficChart.data.datasets[0].data = [];
-      trafficChart.update();
-    }
-  });
-
-  // --- WebSocket Connection ---
-  function connectWebSocket() {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.host;
-    const socket = new WebSocket(`${protocol}//${host}`);
-
-    socket.onopen = () => {
-      console.log("WebSocket connection established");
-      updateStatus(true, "Live");
-      fetchStaticData();
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "stats") {
-          updateRealtimeData(data.payload);
-        }
-      } catch (e) {
-        console.error("Failed to parse WebSocket message:", e);
+  if (elements.charts.intervalSelector) {
+    elements.charts.intervalSelector.addEventListener("change", (e) => {
+      chartIntervalSeconds = parseInt(e.target.value);
+      // Clear chart data when interval changes
+      if (trafficChart) {
+        trafficChart.data.labels = [];
+        trafficChart.data.datasets.forEach(dataset => dataset.data = []);
+        trafficChart.update();
       }
-    };
-
-    socket.onclose = () => {
-      updateStatus(false, "Reconnecting...");
-      setTimeout(connectWebSocket, 3000);
-    };
-
-    socket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      updateStatus(false, "Error");
-      socket.close();
-    };
+    });
   }
 
   // --- Initialization ---
+  console.log('Initializing DAASR Enterprise Dashboard...');
+  
+  // Initialize chart
   initializeChart();
-  connectWebSocket();
-  setInterval(fetchStaticData, 30000);
+  
+  // Try WebSocket connection first, fallback to polling
+  if (typeof WebSocket !== 'undefined') {
+    initializeWebSocket();
+  } else {
+    startPolling();
+  }
+  
+  console.log('Dashboard initialized successfully');
 });
